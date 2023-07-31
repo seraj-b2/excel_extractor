@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Upload Excel and Extract Data from a Column</title>
+    <style>
+      body {
+        background-color: #222;
+        color: #ddd;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+      }
+      .code-container {
+        padding: 1em;
+        border-radius: 12px;
+        box-shadow: 0 0 12px 2px #444;
+        letter-spacing: 1.5px;
+        word-spacing: 3px;
+        color: yellow;
+      }
+      b {
+        font-size: 1.5em;
+      }
+      input[type="file"] {
+        background-color: #444444;
+        color: #ffffff;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+
+      input[type="file"]:focus {
+        outline: none;
+      }
+
+      button {
+        background-color: #007bff;
+        color: #ffffff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-bottom: 10px;
+      }
+
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+
+      select {
+        background-color: #444444;
+        color: #ffffff;
+        padding: 10px;
+        border: none;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+
+      select:focus {
+        outline: none;
+      }
+      header {
+        background-color: #333333;
+        color: #ffffff;
+        padding: 10px;
+        text-align: center;
+      }
+
+      /* Optional: Style for the dark theme container */
+      .container {
+        background-color: #333333;
+        color: #ffffff;
+        padding: 20px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      /* Styles for the alert container */
+      .alert-container {
+        position: fixed;
+        width: auto;
+        bottom: 20px;
+        left: 20px;
+        padding: 10px;
+        border-radius: 4px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        word-spacing: 3px;
+        color: yellow;
+        background-color: #222;
+        box-shadow: 0 0 12px 2px #444;
+        border-radius: 2em;
+        animation: slideInRight 0.5s forwards;
+      }
+      /* Animation for slide in from right */
+      @keyframes slideInRight {
+        from {
+          left: -300px; /* Start position off the screen on the left */
+        }
+        to {
+          left: 20px; /* End position at 20px from the left */
+        }
+      }
+      .alert-container.slide-out-left {
+        animation: slideOutLeft 0.5s forwards;
+      }
+      /* Animation for slide out to right when dismissed */
+      @keyframes slideOutLeft {
+        from {
+          left: 20px; /* Start position at 20px from the left */
+        }
+        to {
+          left: -300px; /* End position off the screen on the right */
+        }
+      }
+
+      /* Styles for the close button */
+      .close-button {
+        float: right;
+        cursor: pointer;
+      }
+
+      /* Styles for the alert message */
+      .alert-message {
+        margin: 0 20px 0 0;
+        white-space: nowrap;
+      }
+
+      /* Hide the alert container by default */
+      .alert-container.hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Upload Excel File</h2>
+    <input type="file" id="excelFile" accept=".xlsx, .xls" />
+    <button onclick="processExcel()">Extract Data from Excel</button>
+
+    <h3>Select a Column:</h3>
+    <select id="columnSelect" disabled></select>
+
+    <button onclick="displayColumnData()">Display Column Data</button>
+    <div id="result"></div>
+
+    <!-- Alert Message Container -->
+    <div id="alertContainer" class="alert-container hidden">
+      <span id="closeButton" class="close-button" onclick="dismissAlert()"
+        >&times;</span
+      >
+      <p id="alertMessage" class="alert-message">Data Successfully Copied!</p>
+    </div>
+    <script>
+      function showAlert() {
+        const alertContainer = document.getElementById("alertContainer");
+        alertContainer.classList.remove("hidden");
+        setTimeout(() => {
+          dismissAlert();
+        }, 2000);
+      }
+
+      function dismissAlert() {
+        const alertContainer = document.getElementById("alertContainer");
+        alertContainer.classList.add("slide-out-left");
+        setTimeout(() => {
+          alertContainer.classList.add("hidden");
+          alertContainer.classList.remove("slide-out-left");
+        }, 500);
+      }
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+    <script>
+      let workbook;
+      let columnNames;
+
+      function processExcel() {
+        const fileInput = document.getElementById("excelFile");
+        const file = fileInput.files[0];
+
+        if (!file) {
+          alert("Please select an Excel file.");
+          return;
+        }
+
+        const reader = new FileReader();
+
+        reader.onload = function (e) {
+          const data = new Uint8Array(e.target.result);
+          workbook = XLSX.read(data, { type: "array" });
+
+          // Assuming the first sheet in the Excel file
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+
+          // Extract column names from the first row (header)
+          const columnData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          columnNames = columnData[0];
+
+          // Populate the dropdown with column names
+          const columnSelect = document.getElementById("columnSelect");
+          columnSelect.innerHTML = "";
+          columnNames.forEach((column, index) => {
+            const option = document.createElement("option");
+            option.value = index;
+            option.textContent = column;
+            columnSelect.appendChild(option);
+          });
+
+          // Enable the dropdown for column selection
+          columnSelect.disabled = false;
+        };
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      function getSelectedColumnData(selectedColumnIndex) {
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const range = XLSX.utils.decode_range(worksheet["!ref"]);
+
+        const selectedColumnData = [];
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const cellAddress = XLSX.utils.encode_cell({
+            r: row,
+            c: selectedColumnIndex,
+          });
+          const cellValue = worksheet[cellAddress]
+            ? worksheet[cellAddress].v
+            : "";
+          selectedColumnData.push(`"${cellValue}"`);
+        }
+
+        // Remove empty cells from the end (if any)
+        while (selectedColumnData[selectedColumnData.length - 1] === "") {
+          selectedColumnData.pop();
+        }
+
+        const uniqueData = [...new Set(selectedColumnData)].filter(Boolean);
+
+        return { data: uniqueData, count: range.e.r };
+      }
+
+      function displayColumnData() {
+        const columnSelect = document.getElementById("columnSelect");
+        const selectedColumnIndex = columnSelect.value;
+
+        if (selectedColumnIndex === "") {
+          alert("Please select a column.");
+          return;
+        }
+
+        const selectedColumnName = columnNames[selectedColumnIndex];
+        const { data, count } = getSelectedColumnData(+selectedColumnIndex);
+
+        // Display the data of the selected column
+        const resultDiv = document.getElementById("result");
+        resultDiv.innerHTML = `<p>Column Data of "${selectedColumnName}" & Total unique count is <b>${
+          data.length
+        } / ${count}</b> >>> <br /><div class="code-container"><code id="codeSnippet" ondblclick="makeEditable()" onclick="copyToClipboard()">${data.join(
+          ", "
+        )}</code></div></p>`;
+      }
+      function makeEditable() {
+        const editableDiv = document.getElementById("codeSnippet");
+        editableDiv.contentEditable = true;
+      }
+      function copyToClipboard() {
+        const codeSnippetElement = document.getElementById("codeSnippet");
+        const textToCopy = codeSnippetElement.innerText;
+
+        // Use the Clipboard API to copy the text to the clipboard
+        navigator.clipboard
+          .writeText(textToCopy)
+          .then(() => {
+            // Optionally, you can provide some visual feedback to indicate the copy operation is successful
+            showAlert();
+          })
+          .catch((error) => {
+            // Handle errors if the copy operation fails
+            console.error("Failed to copy: ", error);
+          });
+      }
+    </script>
+  </body>
+</html>
