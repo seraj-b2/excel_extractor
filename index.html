@@ -140,6 +140,19 @@
     <h3>Select a Column:</h3>
     <select id="columnSelect" disabled></select>
 
+    <select id="sup">
+        <option value="" default>None</option>
+        <option value="&quot;">"</option>
+        <option value="'">'</option>
+    </select>
+
+    <select id="delimeter">
+        <option value="" default>None</option>
+        <option value=" "> </option>
+        <option value=",">,</option>
+        <option value=", ">, </option>
+    </select>
+
     <button onclick="displayColumnData()">Display Column Data</button>
     <div id="result"></div>
 
@@ -214,7 +227,7 @@
         reader.readAsArrayBuffer(file);
       }
 
-      function getSelectedColumnData(selectedColumnIndex) {
+      function getSelectedColumnData(selectedColumnIndex, supValue) {
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const range = XLSX.utils.decode_range(worksheet["!ref"]);
@@ -228,7 +241,7 @@
           const cellValue = worksheet[cellAddress]
             ? worksheet[cellAddress].v
             : "";
-          selectedColumnData.push(`"${cellValue}"`);
+          selectedColumnData.push(`${supValue}${cellValue}${supValue}`);
         }
 
         // Remove empty cells from the end (if any)
@@ -245,20 +258,26 @@
         const columnSelect = document.getElementById("columnSelect");
         const selectedColumnIndex = columnSelect.value;
 
+        const supDropdown = document.getElementById('sup');
+        const delimeterDropdown = document.getElementById('delimeter');
+
+        const supValue = supDropdown.value;
+        const delimeterValue = delimeterDropdown.value;
+
         if (selectedColumnIndex === "") {
           alert("Please select a column.");
           return;
         }
 
         const selectedColumnName = columnNames[selectedColumnIndex];
-        const { data, count } = getSelectedColumnData(+selectedColumnIndex);
+        const { data, count } = getSelectedColumnData(+selectedColumnIndex, supValue);
 
         // Display the data of the selected column
         const resultDiv = document.getElementById("result");
         resultDiv.innerHTML = `<p>Column Data of "${selectedColumnName}" & Total unique count is <b>${
           data.length
         } / ${count}</b> >>> <br /><div class="code-container"><code id="codeSnippet" ondblclick="makeEditable()" onclick="copyToClipboard()">${data.join(
-          ", "
+          `${delimeterValue}`
         )}</code></div></p>`;
       }
       function makeEditable() {
